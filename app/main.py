@@ -1,13 +1,24 @@
 import json
+from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.graph import yby_graph
 
 
-app = FastAPI(title="YBY Core", version="0.3.0")
+app = FastAPI(title="YBY Core", version="0.3.1")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
+
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static",
+)
 
 
 class ChatRequest(BaseModel):
@@ -19,6 +30,11 @@ class ChatResponse(BaseModel):
     answer: str
     task_type: str
     needs_approval: bool
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/static/index.html")
 
 
 @app.get("/health")

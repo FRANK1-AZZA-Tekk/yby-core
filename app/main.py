@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.graph import yby_graph
 
 
-app = FastAPI(title="YBY Core", version="0.2.0")
+app = FastAPI(title="YBY Core", version="0.3.0")
 
 
 class ChatRequest(BaseModel):
@@ -65,6 +65,12 @@ async def chat_stream(request: ChatRequest):
         "result": "",
     }
 
+    config = {
+        "configurable": {
+            "thread_id": "yby-local",
+        }
+    }
+
     async def event_generator():
         yield sse_event(
             "start",
@@ -77,36 +83,64 @@ async def chat_stream(request: ChatRequest):
         final_answer = ""
 
         try:
-            async for chunk, metadata in yby_graph.astream(
+            async for event in yby_graph.astream_events(
                 initial_state,
-                stream_mode="messages",
+                version="v2",
+                config=config,
             ):
-                content = getattr(chunk, "content", "")
+                event_type = event.get("event")
 
-                if not content:
-                    continue
-
-                if isinstance(content, list):
-                    content = "".join(
-                        part.get("text", "")
-                        for part in content
-                        if isinstance(part, dict)
+                if event_type == "on_tool_start":
+                    yield sse_event(
+                        "tool_start",
+                        {
+                            "tool": event["name"],
+                            "run_id": event["run_id"],
+                            "input": event["data"].get("input", {}),
+                        },
                     )
 
-                if not content:
-                    continue
+                elif event_type == "on_tool_end":
+                    output = event["data"].get("output", "")
 
-                final_answer += content
+                    if hasattr(output, "content"):
+                        output = output.content
 
-                node = metadata.get("langgraph_node", "unknown")
+                    yield sse_event(
+                        "tool_end",
+                        {
+                            "tool": event["name"],
+                            "run_id": event["run_id"],
+                            "output": str(output)[:4000],
+                        },
+                    )
 
-                yield sse_event(
-                    "token",
-                    {
-                        "node": node,
-                        "content": content,
-                    },
-                )
+                elif event_type == "on_chat_model_stream":
+                    chunk = event["data"]["chunk"]
+                    content = getattr(chunk, "content", "")
+
+                    if isinstance(content, list):
+                        content = "".join(
+                            part.get("text", "")
+                            for part in content
+                            if isinstance(part, dict)
+                        )
+
+                    if not content:
+                        continue
+
+                    final_answer += content
+
+                    yield sse_event(
+                        "token",
+                        {
+                            "node": event.get("metadata", {}).get(
+                                "langgraph_node",
+                                "unknown",
+                            ),
+                            "content": content,
+                        },
+                    )
 
             yield sse_event(
                 "done",
@@ -135,4 +169,4 @@ async def chat_stream(request: ChatRequest):
 
 
 def sse_event(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"

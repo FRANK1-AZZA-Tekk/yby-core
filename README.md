@@ -1,56 +1,19 @@
-# YBY Core
+# Ponte → YBY SEED
 
-YBY Core é o orquestrador unificado do ecossistema YBY.
+Este repositório foi **consolidado** no hub canônico:
 
-Ele conecta IA local, nuvem, ferramentas de desenvolvimento, MQTT, memória vetorial e firmware ESP32 em um único fluxo controlado por LangGraph.
+**https://github.com/FRANK1-AZZA-Tekk/yby-seed**
 
-## Arquitetura
+## O que foi absorvido
 
-```text
-Usuário / Wearable / Dashboard
-            ↓
-        FastAPI
-            ↓
-      YBY Core
-LangGraph + Pydantic AI
-            ↓
-      MCP Tool Router
- ┌──────────┼──────────┐
- │          │          │
-Ollama     Qdrant    OpenRouter
-PlatformIO PostgreSQL Gemini
-Docker     MQTT      Perplexity
-```
+- Classificação de tarefa e escolha local-first de modelo → `src/orchestrator/`
+- Ferramentas com jail em `~/yby` → `src/tools/`
+- Espelho LangGraph + chat streaming → `integrations/yby-core/` e `static/chat.html`
+- Default de modelo alinhado ao benchmark: `qwen2.5-coder:3b`
 
-## Requisitos
+Ver: [`docs/REPO_MAP.md`](https://github.com/FRANK1-AZZA-Tekk/yby-seed/blob/main/docs/REPO_MAP.md) e [`docs/YBY_CORE.md`](https://github.com/FRANK1-AZZA-Tekk/yby-seed/blob/main/docs/YBY_CORE.md).
 
-- Python 3.11+
-- Ollama rodando em `http://localhost:11434`
-- Qdrant opcional
-- Mosquitto opcional
-- PlatformIO opcional
+## Próximos passos
 
-## Instalação
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-## Teste
-
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Leia o README e explique a arquitetura."}'
-```
-
-## Segurança
-
-- Acesso a arquivos restrito à pasta `~/yby`.
-- Portas locais apenas.
-- Dados sensíveis devem usar Ollama local.
-- Ações destrutivas exigem aprovação humana.
+Issues, PRs e código novos → **yby-seed**.
+Este repositório permanece como arquivo histórico / ponte.
